@@ -88,6 +88,8 @@ services:
 # Pas de section networks: nommée → réseau par défaut (leçon store ZimaOS).
 
 x-casaos:
+  architectures:
+    - amd64
   author: musitoul-blip
   category: File Sync
   hostname: ""
