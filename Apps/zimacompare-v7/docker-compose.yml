@@ -16,9 +16,6 @@ services:
     # privileged + /dev/fuse : nécessaires au mount FUSE rclone.
     # Choix « privileged » (vs cap_add SYS_ADMIN) = 1 seul champ, plus robuste
     # face à la réécriture du compose par CasaOS.
-    privileged: true
-    devices:
-      - /dev/fuse
     # Laisse à rclone le temps de flusher le cache VFS et de démonter proprement
     # (fusermount -uz via le finish S6) avant tout SIGKILL.
     stop_grace_period: 30s
