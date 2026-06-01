@@ -1,0 +1,17 @@
+[
+  {
+    "name": "Utilities",
+    "font": "toolbox-outline",
+    "description": "Utilities Apps"
+  },
+  {
+    "name": "File Sync",
+    "font": "file-sync-outline",
+    "description": "File Sync Apps"
+  },
+  {
+    "name": "Cloud",
+    "font": "cloud-outline",
+    "description": "Public cloud alternatives or enhanced Apps"
+  }
+]

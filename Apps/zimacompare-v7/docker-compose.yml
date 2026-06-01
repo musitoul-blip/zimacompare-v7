@@ -1,0 +1,107 @@
+name: zimacompare-v7
+services:
+
+  # ===========================================================================
+  # zimacompare — image AIO unique (S6-Overlay supervise rclone + uvicorn + nginx)
+  #   rclone  : monte pcloud: → /network/pCloud (INTERNE au conteneur) + rc :5572
+  #   uvicorn : FastAPI 127.0.0.1:8000, lit /network/pCloud en local
+  #   nginx   : sert le React + proxy /api/ et /ws/ → 127.0.0.1:8000 ; écoute 8503
+  # Mono-service = bouton « Installer » actif dans ZimaOS.
+  # ===========================================================================
+  zimacompare:
+    container_name: zimacompare-v7
+    image: ghcr.io/musitoul-blip/zimacompare-aio:v7
+    restart: unless-stopped
+    cpu_shares: 90
+    # privileged + /dev/fuse : nécessaires au mount FUSE rclone.
+    # Choix « privileged » (vs cap_add SYS_ADMIN) = 1 seul champ, plus robuste
+    # face à la réécriture du compose par CasaOS.
+    privileged: true
+    devices:
+      - /dev/fuse
+    # Laisse à rclone le temps de flusher le cache VFS et de démonter proprement
+    # (fusermount -uz via le finish S6) avant tout SIGKILL.
+    stop_grace_period: 30s
+    ports:
+      - target: 8503
+        published: "8503"
+        protocol: tcp
+    environment:
+      - TZ=Europe/Paris
+      - PUID=1000
+      - PGID=1000
+      - RCLONE_RC_USER=zima
+      - RCLONE_RC_PASS=CHANGE-ME-rclone-2026
+      # rc interne au conteneur (non exposé) — le backend pilote rclone en local
+      - RCLONE_RC_URL=http://127.0.0.1:5572
+    # Un seul HEALTHCHECK pour tout l'AIO : nginx répond sur 8503 ⇒ chaîne OK.
+    # Passe vert même pendant le wizard (nginx sert la SPA avant montage pCloud).
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fs http://localhost:8503/ > /dev/null || exit 1"]
+      interval: 30s
+      timeout: 5s
+      start_period: 20s
+      retries: 3
+    volumes:
+      # Données runtime — état, logs, CSV, hash_cache, config utilisateur
+      - type: bind
+        source: /DATA/AppData/zimacompare-v7/data
+        target: /app_data
+      # Dossier rclone — rclone.conf (SECRET) + cache VFS.
+      # Chemin canonique /config/rclone (rclone --config /config/rclone/rclone.conf,
+      # --cache-dir /config/rclone/cache). Aligner setup.py au D-C (était /app_rclone).
+      - type: bind
+        source: /DATA/AppData/zimacompare-v7/rclone
+        target: /config/rclone
+      # --- Disques locaux ---
+      - type: bind
+        source: /media/HDD-Storage1
+        target: /disks/HDD-Storage1
+      - type: bind
+        source: /media/HDD-Storage2
+        target: /disks/HDD-Storage2
+      - type: bind
+        source: /media/SSD_NAS
+        target: /disks/SSD_NAS
+      - type: bind
+        source: /media/Sauvegarde
+        target: /disks/Sauvegarde
+      - type: bind
+        source: /media/Nouveau nom
+        target: /disks/Nouveau_nom
+      # --- Partages réseau NAS / Freebox ---
+      - type: bind
+        source: /media/192.168.1.254/Disque 1
+        target: /network/NAS_Disque1
+      - type: bind
+        source: /media/192.168.1.254/Music
+        target: /network/NAS_Music
+      - type: bind
+        source: /media/192.168.1.254/sondage
+        target: /network/NAS_Sondage
+      - type: bind
+        source: /media/192.168.1.254/cam
+        target: /network/NAS_Cam
+      # NB : pas de volume pCloud — rclone le monte en interne sur /network/pCloud.
+      # NB : pas de /var/run/docker.sock — S6 gère le cycle de vie de rclone.
+
+# Pas de section networks: nommée → réseau par défaut (leçon store ZimaOS).
+
+x-casaos:
+  author: musitoul-blip
+  category: File Sync
+  hostname: ""
+  icon: https://raw.githubusercontent.com/musitoul-blip/zimacompare-v7/main/Apps/zimacompare-v7/icon.png
+  index: /
+  is_uncontrolled: false
+  main: zimacompare
+  port_map: "8503"
+  scheme: http
+  store_app_id: zimacompare-v7
+  title:
+    custom: ""
+    en_us: ZimaCompare v7
+  description:
+    en_us: Scan, compare and sync files between local disks, NAS and pCloud. All-in-one image (S6-Overlay) — single container, one-click install. Setup wizard included, no SSH required.
+  tagline:
+    en_us: File sync with pCloud — single-container AIO, zero SSH setup
